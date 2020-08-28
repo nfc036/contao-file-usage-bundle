@@ -8,14 +8,14 @@
  * @license LGPL-3.0-or-later
  */
 
-namespace Contao\SkeletonBundle\DependencyInjection;
+namespace Nfc036\ContaoFileUsageBundle\DependencyInjection;
 
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 
-class ContaoSkeletonExtension extends Extension
+class ContaoFileUsageExtension extends Extension
 {
     /**
      * {@inheritdoc}
