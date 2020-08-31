@@ -1,0 +1,3 @@
+file_usage:
+    resource: "@ContaoFileUsageBundle/Controller"
+    type: annotation

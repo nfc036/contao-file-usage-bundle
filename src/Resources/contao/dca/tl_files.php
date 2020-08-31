@@ -17,7 +17,7 @@ $GLOBALS['TL_DCA']['tl_files']['fields']['nfu_items'] = array(
 );
 
 $usageOperation = array(
-  'href' => 'act=usages',
+  'href' => 'act=fileUsage',
   'button_callback' => array('Nfc036\ContaoFileUsageBundle\Module\FileUsageHelper', 'showUsages')
 );
 
@@ -28,7 +28,7 @@ $result = array();
 foreach ($GLOBALS['TL_DCA']['tl_files']['list']['operations'] as $key => $operation) {
   $result[$key] = $operation;
   if ($key == 'show') {
-    $result['usage'] = $usageOperation;
+    $result['fileusage'] = $usageOperation;
   }
 }
 $GLOBALS['TL_DCA']['tl_files']['list']['operations'] = $result;

@@ -6,10 +6,196 @@ use \Contao\Input;
 use \Contao\Image;
 use \Contao\StringUtil;
 use \Contao\Config;
+use \Contao\System;
+use \Contao\Database;
 
 class FileUsageHelper extends \Backend
 {
   private static $FILTER = ['tl_files', 'tl_search', 'tl_search_index', 'tl_undo', 'tl_version', 'tl_log', 'tl_user', 'tl_user_group', 'tl_trusted_device'];
+
+    /**
+     * File.
+     *
+     * @var string
+     */
+    protected $strFile;
+
+    /**
+     * Database Instance.
+     *
+     * @var Database
+     */
+    private $database;
+
+    /**
+     * Initialize the controller.
+     *
+     * 1. Import the user
+     * 2. Call the parent constructor
+     * 3. Authenticate the user
+     * 4. Load the language files
+     * DO NOT CHANGE THIS ORDER!
+     */
+    public function __construct()
+    {
+        $this->import(BackendUser::class, 'User');
+        parent::__construct();
+
+        if (!System::getContainer()->get('security.authorization_checker')->isGranted('ROLE_USER')) {
+            System::log('No Authentication', __METHOD__, TL_GENERAL);
+            throw new AccessDeniedException('Access denied');
+        }
+
+        System::loadLanguageFile('default');
+
+        $strFile = Input::get('src', true);
+        $strFile = base64_decode($strFile, true);
+        $strFile = ltrim(rawurldecode($strFile), '/');
+        $this->strFile = $strFile;
+
+        // get a handle to the database
+        $this->database = Database::getInstance();
+
+        if (!\is_array($GLOBALS['TL_CSS'])) {
+            $GLOBALS['TL_CSS'] = [];
+        }
+
+        $GLOBALS['TL_CSS'][] = 'bundles/contaofileusage/css/backend-file-usage.css';
+
+        System::loadLanguageFile('default');
+        System::loadLanguageFile('modules');
+        System::loadLanguageFile('tl_files');
+    }
+
+    /**
+     * Run the controller and parse the template.
+     *
+     * @return Response the http response of the controller
+     */
+    public function run(): Response
+    {
+        if ('' === $this->strFile) {
+            die('No file given');
+        }
+
+        // Make sure there are no attempts to hack the file system
+        if (preg_match('@^\.+@', $this->strFile) || preg_match('@\.+/@', $this->strFile) || preg_match('@(://)+@', $this->strFile)) {
+            die('Invalid file name');
+        }
+
+        // Limit preview to the files directory
+        if (!preg_match('@^'.preg_quote(Config::get('uploadPath'), '@').'@i', $this->strFile)) {
+            die('Invalid path');
+        }
+
+        $rootDir = System::getContainer()->getParameter('kernel.project_dir');
+
+        // Check whether the file exists
+        if (!file_exists($rootDir.'/'.$this->strFile)) {
+            die('File not found');
+        }
+
+        // Check whether the file is mounted (thanks to Marko Cupic)
+        if (!$this->User->hasAccess($this->strFile, 'filemounts')) {
+            die('Permission denied');
+        }
+
+        // Open the download dialogue
+        if (Input::get('download')) {
+            $objFile = new File($this->strFile);
+            $objFile->sendToBrowser();
+        }
+
+        /** @var BackendTemplate $objTemplate */
+        $objTemplate = new BackendTemplate('be_fileusages');
+
+        /** @var FilesModel $objModel */
+        $objModel = FilesModel::findByPath($this->strFile);
+
+        // Add the resource (see #6880)
+        if (null === $objModel && Dbafs::shouldBeSynchronized($this->strFile)) {
+            $objModel = Dbafs::addResource($this->strFile);
+        }
+
+        if (null !== $objModel) {
+            $objTemplate->uuid = StringUtil::binToUuid($objModel->uuid); // see #5211
+        }
+
+        // Add the file info
+        /** @var File $objFile */
+        $objFile = new File($this->strFile);
+
+        // Image
+        if ($objFile->isImage) {
+            $objTemplate->isImage = true;
+            $objTemplate->width = $objFile->viewWidth;
+            $objTemplate->height = $objFile->viewHeight;
+            $objTemplate->src = $this->urlEncode($this->strFile);
+            $objTemplate->dataUri = $objFile->dataUri;
+        }
+
+        // Meta data
+        if (($objModel = FilesModel::findByPath($this->strFile)) instanceof FilesModel) {
+            $arrMeta = StringUtil::deserialize($objModel->meta);
+
+            if (\is_array($arrMeta)) {
+                System::loadLanguageFile('languages');
+
+                $objTemplate->meta = $arrMeta;
+                $objTemplate->languages = (object) $GLOBALS['TL_LANG']['LNG'];
+            }
+        }
+        $objTemplate->href = ampersand(Environment::get('request')).'&amp;download=1';
+        $objTemplate->filesize = $this->getReadableSize($objFile->filesize).' ('.number_format($objFile->filesize, 0, $GLOBALS['TL_LANG']['MSC']['decimalSeparator'], $GLOBALS['TL_LANG']['MSC']['thousandsSeparator']).' Byte)';
+        $arrUsages = [];
+
+        // get all tables from the database, we can't rely on Contao Models since that won't include usage in extensions
+        $arrTables = $this->database->listTables();
+        // remove tables we don't want to search in
+        $arrTables = array_filter($arrTables, function ($table) {
+            return !\in_array($table, self::FILTER, true);
+        });
+
+        foreach ($arrTables as $strTable) {
+            $arrFields = $this->database->listFields($strTable);
+
+            foreach ($arrFields as $arrField) {
+                if ('binary' === $arrField['type']) {
+                    $usage = $this->find($strTable, $arrField['name'], $objModel->uuid);
+                    if (!empty($usage)) {
+                        $arrUsages[$strTable] = $usage;
+                    }
+                } elseif ('blob' === $arrField['type']) {
+                    $usage = $this->find($strTable, $arrField['name'], StringUtil::binToUuid($objModel->uuid));
+                    if (!empty($usage)) {
+                        $arrUsages[$strTable] = $usage;
+                    }
+                }
+            }
+        }
+
+        $objTemplate->usage = $arrUsages;
+        $objTemplate->icon = $objFile->icon;
+        $objTemplate->mime = $objFile->mime;
+        $objTemplate->ctime = Date::parse(Config::get('datimFormat'), $objFile->ctime);
+        $objTemplate->mtime = Date::parse(Config::get('datimFormat'), $objFile->mtime);
+        $objTemplate->atime = Date::parse(Config::get('datimFormat'), $objFile->atime);
+        $objTemplate->path = StringUtil::specialchars($this->strFile);
+        $objTemplate->theme = Backend::getTheme();
+        $objTemplate->base = Environment::get('base');
+        $objTemplate->language = $GLOBALS['TL_LANGUAGE'];
+        $objTemplate->title = StringUtil::specialchars($this->strFile);
+        if (version_compare(VERSION, '4.9', '>=')) {
+            $objTemplate->host = Backend::getDecodedHostname();
+        } else {
+            $objTemplate->host = static::getDecodedHostname();
+        }
+        $objTemplate->charset = Config::get('characterSet');
+        $objTemplate->labels = (object) $GLOBALS['TL_LANG']['MSC'];
+        $objTemplate->download = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['fileDownload']);
+
+        return $objTemplate->getResponse();
+    }
 
 	/**
 	 * Return the file usage button
@@ -49,9 +235,14 @@ class FileUsageHelper extends \Backend
       $linkTitle = 'Suche noch nie ausgeführt';
     }
 
-		return '<a href="contao/popup.php?src=' . base64_encode($row['id']) . '" title="' . \Contao\StringUtil::specialchars($linkTitle) . '"' . $attributes . ' onclick="Backend.openModalIframe({\'title\':\'' . str_replace("'", "\\'", \Contao\StringUtil::specialchars($row['fileNameEncoded'])) . '\',\'url\':this.href});return false">' . $iconHtml . '</a> ';
+		return '<a href="contao/fileUsage?src=' . base64_encode($row['id']) . '" title="' . \Contao\StringUtil::specialchars($linkTitle) . '"' . $attributes . ' onclick="Backend.openModalIframe({\'title\':\'' . str_replace("'", "\\'", \Contao\StringUtil::specialchars($row['fileNameEncoded'])) . '\',\'url\':this.href});return false">' . $iconHtml . '</a> ';
   }
-  
+
+  /**
+   * Aktualisiert die angegebenen Anzahl von Dateien. Ruft findReferences jeweils
+   * auf und schreibt die Rückgabewerte in die nfu-Spalten der Datenbank.
+   * Eine Datei wird maximal einmal pro Stunde aufgerufen.
+   */
   public function updateFiles($count = 10) {
     $arrFiles = $this->Database->prepare(sprintf("SELECT * FROM tl_files WHERE type='file' and nfu_lastcheck is null or nfu_lastcheck < UNIX_TIMESTAMP() - 3600 order by nfu_lastcheck asc limit 0, %d", $count))
       ->execute()
@@ -59,13 +250,24 @@ class FileUsageHelper extends \Backend
     if (count($arrFiles) > 0) {
       // Ja, wir brauchen eine Info-Mail.
       foreach ($arrFiles as $row) {
-        $arrUsages = $this->findReferences($row['id']);
-        $this->Database->prepare("UPDATE tl_files set nfu_lastcheck=UNIX_TIMESTAMP(), nfu_count=?, nfu_items=? where id=?")
-          ->execute(count($arrUsages), serialize($arrUsages), $row['id']);
+        $this->findAndSaveReferences($row['id']);
       }
     }
   }
 
+  /**
+   * Sucht die Referenzen und schreibt Ergebnis in Datenbank.
+   */
+  public function findAndSaveReferences($id) {
+    $arrUsages = $this->findReferences($id);
+    $this->Database->prepare("UPDATE tl_files set nfu_lastcheck=UNIX_TIMESTAMP(), nfu_count=?, nfu_items=? where id=?")
+      ->execute(count($arrUsages), serialize($arrUsages), $id);
+  }
+
+  /**
+   * Sucht alle Referenzen auf die Datei mit der angegebenen ID und
+   * liefert ein Array der Treffer (jeweils Hash mit url und title) zurück.
+   */
   public function findReferences($id)
   {
     $result = array();
