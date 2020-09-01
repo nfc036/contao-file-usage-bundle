@@ -18,9 +18,9 @@ use Symfony\Component\Routing\Annotation\Route;
 class FileUsageBackendController extends AbstractController
 {
     /**
-     * @Route("/fileUsage", name="xyzfile_usage_file_usage")
+     * @Route("/fileUsage", name="file_usage_file_show")
      */
-    public function fileUsageAction(): Response
+    public function showAction(): Response
     {
         $this->get('contao.framework')->initialize(); // The new AbstractController from Contao>=4.9 provides this via $this->initializeContaoFramework();
 

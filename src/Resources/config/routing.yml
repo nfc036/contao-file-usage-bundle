@@ -1,3 +1,6 @@
-file_usage:
-    resource: "@ContaoFileUsageBundle/Controller"
-    type: annotation
+showfileusage:
+    path: /contao/fileUsage
+    defaults:
+        _controller: Nfc036\ContaoFileUsageBundle\Controller\FileUsageBackendController:showAction
+        _scope: backend
+        _token_check: true
