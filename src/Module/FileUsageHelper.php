@@ -78,11 +78,22 @@ class FileUsageHelper extends Backend
             $GLOBALS['TL_CSS'] = [];
         }
 
-        $GLOBALS['TL_CSS'][] = 'bundles/contaofileusage/css/backend-file-usage.css';
+        $GLOBALS['TL_CSS'][] = 'bundles/contaofileusage/css/contao-file-usage.css';
 
         System::loadLanguageFile('default');
         System::loadLanguageFile('modules');
         System::loadLanguageFile('tl_files');
+    }
+
+    public function runUpdate(): Response
+    {
+      $updated = 0;
+      $count = 10;
+      if (is_array($_GET) && array_key_exists('count', $_GET) && is_numeric($_GET['count']) && $_GET['count'] > 0) {
+        $count = $_GET['count'];
+      }
+      $updated = $this->updateFiles($count);
+      return \Symfony\Component\HttpFoundation\Response::create(sprintf("Für %d von %d Dateien wurden die Referenzen aktualisiert.", $updated, $count));
     }
 
     /**
@@ -167,6 +178,8 @@ class FileUsageHelper extends Backend
         $objTemplate->filesize = $this->getReadableSize($objFile->filesize).' ('.number_format($objFile->filesize, 0, $GLOBALS['TL_LANG']['MSC']['decimalSeparator'], $GLOBALS['TL_LANG']['MSC']['thousandsSeparator']).' Byte)';
         $arrUsages = [];
         $objDB = $this->database->prepare("select * from tl_files where path=?")->execute($this->strFile)->fetchAssoc();
+        $this->findAndSaveReferences($objDB['id']);
+        $objDB = $this->database->prepare("select * from tl_files where path=?")->execute($this->strFile)->fetchAssoc();
         $arrUsages = unserialize($objDB['nfu_items']);
 
         $objTemplate->usageCount = $objDB['nfu_count'];
@@ -191,13 +204,6 @@ class FileUsageHelper extends Backend
         $objTemplate->labels = (object) $GLOBALS['TL_LANG']['MSC'];
         $objTemplate->download = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['fileDownload']);
 
-        if (!\is_array($GLOBALS['TL_CSS'])) {
-            $GLOBALS['TL_CSS'] = [];
-        }
-
-        $GLOBALS['TL_CSS'][] = 'bundles/contao-file-usage/css/contao-file-usage.css';
-
-
         return $objTemplate->getResponse();
     }
 
@@ -215,7 +221,6 @@ class FileUsageHelper extends Backend
 	 */
 	public function showUsages($row, $href, $label, $title, $icon, $attributes)
 	{
-    $this->updateFiles();
 		if (\Contao\Input::get('popup'))
 		{
 			return '';
@@ -228,14 +233,14 @@ class FileUsageHelper extends Backend
     if ($objFile['nfu_lastcheck'] > 0) {
       $zeit = date(\Contao\Config::get('datimFormat'), $objFile['nfu_lastcheck']);
       if ($objFile['nfu_count'] == 0) {
-        $iconHtml = \Contao\Image::getHtml('folMinus.gif', 'Keine Referenzen gefunden, letzter Check '.$zeit);
+        $iconHtml = \Contao\Image::getHtml('error.gif', 'Keine Referenzen gefunden, letzter Check '.$zeit);
         $linkTitle = 'Keine Referenzen gefunden, letzter Check '.$zeit;
       } else {
-        $iconHtml = \Contao\Image::getHtml('folPlus.gif', sprintf('%d Referenzen gefunden, letzter Check '.$zeit, $objFile['nfu_count']));
+        $iconHtml = \Contao\Image::getHtml('sizes.gif', sprintf('%d Referenzen gefunden, letzter Check '.$zeit, $objFile['nfu_count']));
         $linkTitle = sprintf('%d Referenzen gefunden, letzter Check '.$zeit, $objFile['nfu_count']);
       }
     } else {
-      $iconHtml = \Contao\Image::getHtml('error.gif', 'File Usage Suche noch nicht ausgeführt');
+      $iconHtml = \Contao\Image::getHtml('reload.gif', 'File Usage Suche noch nicht ausgeführt');
       $linkTitle = 'Suche noch nie ausgeführt';
     }
 
@@ -248,15 +253,17 @@ class FileUsageHelper extends Backend
    * Eine Datei wird maximal einmal pro Stunde aufgerufen.
    */
   public function updateFiles($count = 10) {
+    $updated = 0;
     $arrFiles = $this->Database->prepare(sprintf("SELECT * FROM tl_files WHERE type='file' and nfu_lastcheck is null or nfu_lastcheck < UNIX_TIMESTAMP() - 3600 order by nfu_lastcheck asc limit 0, %d", $count))
       ->execute()
       ->fetchAllAssoc();
     if (count($arrFiles) > 0) {
       // Ja, wir brauchen eine Info-Mail.
       foreach ($arrFiles as $row) {
-        $this->findAndSaveReferences($row['id']);
+        $updated += $this->findAndSaveReferences($row['id']);
       }
     }
+    return $updated;
   }
 
   /**
@@ -264,8 +271,9 @@ class FileUsageHelper extends Backend
    */
   public function findAndSaveReferences($id) {
     $arrUsages = $this->findReferences($id);
-    $this->Database->prepare("UPDATE tl_files set nfu_lastcheck=UNIX_TIMESTAMP(), nfu_count=?, nfu_items=? where id=?")
-      ->execute(count($arrUsages), serialize($arrUsages), $id);
+    $statement = $this->Database->prepare("UPDATE tl_files set nfu_lastcheck=UNIX_TIMESTAMP(), nfu_count=?, nfu_items=? where id=?");
+    $statement->execute(count($arrUsages), serialize($arrUsages), $id);
+    return $statement->affectedRows;
   }
 
   /**

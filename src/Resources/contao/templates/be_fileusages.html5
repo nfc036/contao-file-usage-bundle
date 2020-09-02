@@ -48,7 +48,7 @@
         <tr>
           <td><span class="tl_label"><?= $this->labels->usages ?>:</span></td>
           <td><?php foreach ($this->usages as $usage) {
-                printf("<a href=\"%s\" target=\"_usage\">%s</a><br>", $usage['url'], $usage['title']);
+                printf("<a class=\"nfc036-file-usage\" href=\"%s\" target=\"_usage\">&raquo; %s</a><br>", $usage['url'], $usage['title']);
               }
             ?></td>
         </tr>

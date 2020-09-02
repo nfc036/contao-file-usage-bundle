@@ -27,7 +27,7 @@ $usageOperation = array(
 $result = array();
 foreach ($GLOBALS['TL_DCA']['tl_files']['list']['operations'] as $key => $operation) {
   $result[$key] = $operation;
-  if ($key == 'show') {
+  if ($key == 'source') {
     $result['fileusage'] = $usageOperation;
   }
 }

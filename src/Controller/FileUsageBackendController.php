@@ -28,4 +28,12 @@ class FileUsageBackendController extends AbstractController
 
         return $controller->run();
     }
+
+    public function updateFileUsage(): Response {
+      $this->get('contao.framework')->initialize(); // The new AbstractController from Contao>=4.9 provides this via $this->initializeContaoFramework();
+
+      $controller = new FileUsageHelper();
+
+      return $controller->runUpdate();
+    }
 }
