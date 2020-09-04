@@ -85,6 +85,22 @@ class FileUsageHelper extends Backend
         System::loadLanguageFile('tl_files');
     }
 
+    /**
+     * Wird als Cron-Job aufgerufen. Siehe config.php.
+     * Analysiert werden mindestens 100 und höchsten 1/7tel der vorhandenen
+     * Dateien.
+     */
+    public function updateFileUsages()
+    {
+      $tmpFilesCount = $this->database->prepare("select count(*) as anzahl from tl_files where type='file'")->execute()->fetchAssoc();
+      $filesCount = $tmpFilesCount['anzahl'];
+      $count = max(100, $filesCount);
+      $updated = $this->updateFiles($count);
+      // Add a log entry
+      $this->log(sprintf("File references updated (%d of %d files).", $updated, $count), __METHOD__, TL_CRON);
+    }
+
+
     public function runUpdate(): Response
     {
       $updated = 0;
@@ -93,7 +109,7 @@ class FileUsageHelper extends Backend
         $count = $_GET['count'];
       }
       $updated = $this->updateFiles($count);
-      return \Symfony\Component\HttpFoundation\Response::create(sprintf("Für %d von %d Dateien wurden die Referenzen aktualisiert.", $updated, $count));
+      return \Symfony\Component\HttpFoundation\Response::create();
     }
 
     /**
@@ -241,7 +257,7 @@ class FileUsageHelper extends Backend
       }
     } else {
       $iconHtml = \Contao\Image::getHtml('reload.gif', 'File Usage Suche noch nicht ausgeführt');
-      $linkTitle = 'Suche noch nie ausgeführt';
+      $linkTitle = 'Suche nach Referenzen noch nie ausgeführt';
     }
 
 		return '<a href="contao/fileUsage?src=' . base64_encode($row['id']) . '" title="' . \Contao\StringUtil::specialchars($linkTitle) . '"' . $attributes . ' onclick="Backend.openModalIframe({\'title\':\'' . str_replace("'", "\\'", \Contao\StringUtil::specialchars($row['fileNameEncoded'])) . '\',\'url\':this.href});return false">' . $iconHtml . '</a> ';
