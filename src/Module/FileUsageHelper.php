@@ -103,12 +103,14 @@ class FileUsageHelper extends Backend
 
     public function runUpdate(): Response
     {
+      // print "<pre>";
       $updated = 0;
       $count = 10;
       if (is_array($_GET) && array_key_exists('count', $_GET) && is_numeric($_GET['count']) && $_GET['count'] > 0) {
         $count = $_GET['count'];
       }
       $updated = $this->updateFiles($count);
+      // print "</pre>";
       return \Symfony\Component\HttpFoundation\Response::create();
     }
 
@@ -292,6 +294,51 @@ class FileUsageHelper extends Backend
     return $statement->affectedRows;
   }
 
+  public function getParentForUsage($table, $id) {
+    // print "getParentForUsage($table, $id):";
+    switch ($table) {
+      case 'tl_content': 
+        $row = $this->Database->prepare("SELECT pid, IF(ptable='', 'tl_article', ptable) as `ptable` from tl_content where id=?")->execute($id)->fetchAssoc();
+        // print_r($row);
+        if ($row) {
+          return $this->getParentForUsage($row['ptable'], $row['pid']);
+        }
+        break;
+      case 'tl_article':
+        $row = $this->Database->prepare("SELECT pid from tl_article where id=?")->execute($id)->fetchAssoc();
+        // print_r($row);
+        if ($row) {
+          $page = $this->Database->prepare("SELECT * from tl_page where id=?")->execute($row['pid'])->fetchAssoc();
+          return array(
+            'refTitle' => sprintf("Seite \"%s\"", $page['title']),
+            'refURL' => sprintf("/contao?do=article&table=tl_content&id=%d&rt=%s", $id, RequestToken::get())
+          );
+        }
+      break;
+      case 'tl_news':
+        $row = $this->Database->prepare("SELECT pid from tl_news where id=?")->execute($id)->fetchAssoc();
+        if ($row) {
+          $archive = $this->Database->prepare("SELECT * from tl_news_archive where id=?")->execute($row['pid'])->fetchAssoc();
+          return array(
+            'refTitle' => sprintf("Nachrichtenarchiv \"%s\"", $archive['title']),
+            'refURL' => sprintf("/contao?do=news&table=tl_news&id=%d&rt=%s", $archive['id'], RequestToken::get())
+          );
+        }
+      break;
+      case 'tl_style':
+        $row = $this->Database->prepare("SELECT pid from tl_style where id=?")->execute($id)->fetchAssoc();
+        if ($row) {
+          $sheet = $this->Database->prepare("SELECT * from tl_style_sheet where id=?")->execute($row['pid'])->fetchAssoc();
+          return array(
+            'refTitle' => sprintf("Stylesheet \"%s\"", $sheet['name']),
+            'refURL' => sprintf("/contao?do=themes&table=tl_style&id=%d&rt=%s", $sheet['id'], RequestToken::get())
+          );
+        }
+      break;
+    }
+    return array();
+  }
+
   /**
    * Sucht alle Referenzen auf die Datei mit der angegebenen ID und
    * liefert ein Array der Treffer (jeweils Hash mit url und title) zurück.
@@ -360,6 +407,7 @@ class FileUsageHelper extends Backend
           foreach ($arrUsage as $objUsage) {
             switch ($strTable) {
               case 'tl_content':
+                # über ptable die Zugehörigkeit feststellen (News oder Article) - bei News mit Newsarchiv, bei Article nur die Page.
                 $hl = unserialize($objUsage['headline']);
                 $usage = array(
                   'title' => sprintf('Inhaltselement "%s"', $hl['value']),
@@ -367,24 +415,28 @@ class FileUsageHelper extends Backend
                 );
                 break;
               case 'tl_layout':
+                # ausreichend
                 $usage = array(
                   'title' => sprintf('Layout "%s"', $objUsage['name']),
                   'url' => sprintf("/contao?do=themes&table=tl_layout&id=%s&act=edit&rt=%s", $objUsage['id'], RequestToken::get())
                 );
                 break;
               case 'tl_style':
+                # Name des übergeordneten Stylesheets.
                 $usage = array(
                   'title' => sprintf('CSS-Selector "%s"', $objUsage['selector']),
                   'url' => sprintf("/contao?do=themes&table=tl_style&id=%d&act=edit&rt=%s", $objUsage['id'], RequestToken::get())
                 );
                 break;
               case 'tl_module':
+                # ausreichend; Module können mehrfach genutzt werden - schwierig...
                 $usage = array(
                   'title' => sprintf('Modul "%s"', $objUsage['name']),
                   'url' => sprintf("/contao?do=themes&table=tl_module&id=%d&act=edit&rt=%s", $objUsage['id'], RequestToken::get())
                 );
                 break;
               case 'tl_news':
+                # News mit Newsarchiv
                 $usage = array(
                   'title' => sprintf('News "%s"', $objUsage['headline']),
                   'url' => sprintf("/contao?do=news&table=tl_content&id=%d&rt=%s", $objUsage['id'], RequestToken::get())
@@ -397,6 +449,9 @@ class FileUsageHelper extends Backend
                 print "</pre>";
                 $usage = $objUsage;
                 break;
+            }
+            if (is_array($usage) && array_key_exists('title', $usage)) {
+              $usage = array_merge($usage, $this->getParentForUsage($strTable, $objUsage['id']));
             }
             $arrUsages[] = $usage;
           }
