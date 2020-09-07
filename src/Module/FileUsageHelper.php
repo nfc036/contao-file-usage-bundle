@@ -294,6 +294,10 @@ class FileUsageHelper extends Backend
     return $statement->affectedRows;
   }
 
+  /**
+   * Es gab einen Treffer in einer Datei. Für die Navigation ist es einfacher, wenn der Nutzer auch den Bezug
+   * zu einer Seite o.ä. hat. Dieser Bezug wird hier ermittelt und in refTitle und refURL gespeichert.
+   */
   public function getParentForUsage($table, $id) {
     // print "getParentForUsage($table, $id):";
     switch ($table) {
@@ -347,14 +351,17 @@ class FileUsageHelper extends Backend
   {
     $result = array();
 
-    $objFile = FilesModel::findByPk($id);
-    #    print \StringUtil::binToUuid($objFile->uuid);
-    #    return "";
-    #   print_r($objFile);
-    #   return "";
+    $elements = array();
+
+    $objFileModel = FilesModel::findByPk($id);
+    $elements[] = $objFileModel;
+    if ($objFileModel->pid != null) {
+      $objFolder = FilesModel::findByUuid(StringUtil::binToUuid($objFileModel->pid));
+      $elements[] = $objFolder;
+    }
 
     $arrUsages = array();
-    if ($objFile) {
+    foreach ($elements as $objFile) {
       $arrTables = $this->Database->listTables();
       // remove tables we don't want to search in
       $arrTables = array_filter($arrTables, function ($table) {
@@ -459,7 +466,12 @@ class FileUsageHelper extends Backend
       }
       $result = array_merge($result, $arrUsages);
     }
-    return $result;
+    // Es kann zu Mehrfachtreffern der gleichen Elemente kommen => hier werden Dubletten bereinigt
+    $unique = array();
+    foreach ($result as $item) {
+      $unique[$item['url']] = $item;
+    }
+    return array_values($unique);
   }
 
 }
