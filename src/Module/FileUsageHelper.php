@@ -101,8 +101,12 @@ class FileUsageHelper extends Backend
     }
 
 
+    /**
+     * Wird bei der Route /contao/updateFileUsage?count=\d+ aufgerufen...
+     */
     public function runUpdate(): Response
     {
+      $start = microtime(true);
       // print "<pre>";
       $updated = 0;
       $count = 10;
@@ -111,7 +115,7 @@ class FileUsageHelper extends Backend
       }
       $updated = $this->updateFiles($count);
       // print "</pre>";
-      return \Symfony\Component\HttpFoundation\Response::create();
+      return \Symfony\Component\HttpFoundation\Response::create(sprintf("<b>%d von maximal %d Dateien aktualisiert (%.1f Sekunden)", $updated, $count, microtime(true) - $start));
     }
 
     /**
