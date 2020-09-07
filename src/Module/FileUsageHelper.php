@@ -250,7 +250,7 @@ class FileUsageHelper extends Backend
     if ($row['type'] !== 'file') {
       return '';
     }
-    $objFile = $this->Database->prepare("select * from tl_files where path=?")->execute($row['id'])->fetchAssoc();
+    $objFile = $this->Database->prepare("select * from tl_files where path=?")->execute(urldecode($row['id']))->fetchAssoc();
     $linkTitle = '';
     if ($objFile['nfu_lastcheck'] > 0) {
       $zeit = date(\Contao\Config::get('datimFormat'), $objFile['nfu_lastcheck']);
