@@ -272,7 +272,7 @@ class FileUsageHelper extends Backend
    */
   public function updateFiles($count = 10) {
     $updated = 0;
-    $arrFiles = $this->Database->prepare(sprintf("SELECT * FROM tl_files WHERE type='file' and nfu_lastcheck is null or nfu_lastcheck < UNIX_TIMESTAMP() - 3600 order by nfu_lastcheck asc, path asc limit 0, %d", $count))
+    $arrFiles = $this->Database->prepare(sprintf("SELECT * FROM tl_files WHERE type='file' and (nfu_lastcheck is null or nfu_lastcheck < UNIX_TIMESTAMP() - 3600) order by nfu_lastcheck asc, path asc limit 0, %d", $count))
       ->execute()
       ->fetchAllAssoc();
     if (count($arrFiles) > 0) {
