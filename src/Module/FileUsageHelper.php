@@ -388,7 +388,7 @@ class FileUsageHelper extends Backend
             );
             #print $sql . ";\n";
             $arrUsage = $this->Database->prepare($sql)->query()->fetchEach('id');
-          } elseif ('varchar' === $arrField['type'] || 'text' === $arrField['type'] || 'mediumtext' === $arrField['type'] || 'longtext' === $arrField['type']) {
+          } elseif ($objFile->type == 'file' && ('varchar' === $arrField['type'] || 'text' === $arrField['type'] || 'mediumtext' === $arrField['type'] || 'longtext' === $arrField['type'])) {
             $sql = sprintf(
               "select id from `%s` where `%s` like '%%%s%%' or `%s` like '%%%s%%' or `%s` like '%%%s%%'",
               $strTable,
