@@ -282,6 +282,7 @@ class FileUsageHelper extends Backend
     if (count($arrFiles) > 0) {
       // Ja, wir brauchen eine Info-Mail.
       foreach ($arrFiles as $row) {
+        set_time_limit(30);
         $updated += $this->findAndSaveReferences($row['id']);
       }
     }
