@@ -97,7 +97,7 @@ class FileUsageHelper extends Backend
     {
       $tmpFilesCount = $this->database->prepare("select count(*) as anzahl from tl_files where type='file'")->execute()->fetchAssoc();
       $filesCount = $tmpFilesCount['anzahl'];
-      $count = max(20, $filesCount);
+      $count = min(20, $filesCount);
       System::log('FileUsageHelper:updateFileUsages(), count='.$count, __METHOD__, TL_GENERAL);
       $updated = $this->updateFiles($count);
       // Add a log entry
