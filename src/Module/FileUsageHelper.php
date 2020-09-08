@@ -85,7 +85,6 @@ class FileUsageHelper extends Backend
         System::loadLanguageFile('default');
         System::loadLanguageFile('modules');
         System::loadLanguageFile('tl_files');
-        System::log('FileUsageHelper:__construct()', __METHOD__, TL_GENERAL);
     }
 
     /**
@@ -98,10 +97,10 @@ class FileUsageHelper extends Backend
       $tmpFilesCount = $this->database->prepare("select count(*) as anzahl from tl_files where type='file'")->execute()->fetchAssoc();
       $filesCount = $tmpFilesCount['anzahl'];
       $count = min(20, $filesCount);
-      System::log('FileUsageHelper:updateFileUsages(), count='.$count, __METHOD__, TL_GENERAL);
+      System::log('FileUsageHelper:updateFileUsages(), count='.$count, __METHOD__, TL_CRON);
       $updated = $this->updateFiles($count);
       // Add a log entry
-      $this->log(sprintf("File references updated (%d of %d files).", $updated, $count), __METHOD__, TL_CRON);
+      System::log(sprintf("File references updated (%d of %d files).", $updated, $count), __METHOD__, TL_CRON);
     }
 
 
