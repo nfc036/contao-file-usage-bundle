@@ -59,10 +59,12 @@ class FileUsageHelper extends Backend
         $this->import(BackendUser::class, 'User');
         parent::__construct();
 
+        /*
         if (!System::getContainer()->get('security.authorization_checker')->isGranted('ROLE_USER')) {
             System::log('No Authentication', __METHOD__, TL_GENERAL);
             throw new AccessDeniedException('Access denied');
         }
+        */
 
         System::loadLanguageFile('default');
 
