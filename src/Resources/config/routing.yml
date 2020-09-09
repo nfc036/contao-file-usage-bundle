@@ -5,8 +5,8 @@ showfileusage:
         _scope: backend
         _token_check: true
 updatefileusage:
-    path: /contao/updateFileUsage
+    path: /updateFileUsage
     defaults:
         _controller: Nfc036\ContaoFileUsageBundle\Controller\FileUsageBackendController:updateFileUsage
-        _scope: backend
-        _token_check: true
+        _scope: frontend
+        _token_check: false
