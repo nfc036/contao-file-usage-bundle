@@ -458,11 +458,11 @@ class FileUsageHelper extends Backend
                 );
                 break;
               default:
-                print "<h1>strTable=$strTable (evtl. Link definieren!?)</h1>";
-                print "<pre>";
-                print_r($objUsage);
-                print "</pre>";
-                $usage = $objUsage;
+                # keine Core-Tabelle. Link einfach mal raten.
+                $usage = array(
+                  'title' => sprintf("ID %d in Tabelle %s", $objUsage['id'], $strTable),
+                  'url' => sprintf("/contao?do=%s&act=edit&id=%d&rt=%s", $strTable, $objUsage['id'], RequestToken::get())
+                );
                 break;
             }
             if (is_array($usage) && array_key_exists('title', $usage)) {
