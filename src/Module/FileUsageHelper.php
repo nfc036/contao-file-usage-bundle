@@ -480,7 +480,12 @@ class FileUsageHelper extends Backend
     foreach ($result as $item) {
       $unique[$item['url']] = $item;
     }
-    return array_values($unique);
+    // nur die ersten 20 Treffer sind völlig ausreichend, sonst wird BLOB zu klein
+    $result = array_values($unique);
+    if (count($result) > 20) {
+      $result = array_slice($result, 0, 20);
+    }
+    return $result;
   }
 
 }
