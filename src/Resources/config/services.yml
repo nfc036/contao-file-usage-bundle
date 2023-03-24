@@ -1,7 +1,8 @@
 services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: true
+
     Nfc036\ContaoFileUsageBundle\Controller\FileUsageBackendController:
-        arguments:
-            - '%kernel.project_dir%'
-            - "@session"
-            - "@contao.framework"
-        tags: ['controller.services_arguments']
+        tags: ['controller.service_arguments']
