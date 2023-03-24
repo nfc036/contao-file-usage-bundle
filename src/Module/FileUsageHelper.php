@@ -25,7 +25,6 @@ use Contao\Idna;
 use Contao\Model;
 use Contao\Model\Collection;
 use Contao\Model\QueryBuilder;
-use Contao\RequestToken;
 
 class FileUsageHelper extends Backend
 {
@@ -324,7 +323,7 @@ class FileUsageHelper extends Backend
           $page = $this->Database->prepare("SELECT * from tl_page where id=?")->execute($row['pid'])->fetchAssoc();
           return array(
             'refTitle' => sprintf("Seite \"%s\"", $page['title']),
-            'refURL' => sprintf("/contao?do=article&table=tl_content&id=%d&rt=%s", $id, RequestToken::get())
+            'refURL' => sprintf("/contao?do=article&table=tl_content&id=%d", $id)
           );
         }
       break;
@@ -334,7 +333,7 @@ class FileUsageHelper extends Backend
           $archive = $this->Database->prepare("SELECT * from tl_news_archive where id=?")->execute($row['pid'])->fetchAssoc();
           return array(
             'refTitle' => sprintf("Nachrichtenarchiv \"%s\"", $archive['title']),
-            'refURL' => sprintf("/contao?do=news&table=tl_news&id=%d&rt=%s", $archive['id'], RequestToken::get())
+            'refURL' => sprintf("/contao?do=news&table=tl_news&id=%d", $archive['id'])
           );
         }
       break;
@@ -344,7 +343,7 @@ class FileUsageHelper extends Backend
           $sheet = $this->Database->prepare("SELECT * from tl_style_sheet where id=?")->execute($row['pid'])->fetchAssoc();
           return array(
             'refTitle' => sprintf("Stylesheet \"%s\"", $sheet['name']),
-            'refURL' => sprintf("/contao?do=themes&table=tl_style&id=%d&rt=%s", $sheet['id'], RequestToken::get())
+            'refURL' => sprintf("/contao?do=themes&table=tl_style&id=%d", $sheet['id'])
           );
         }
       break;
@@ -427,42 +426,42 @@ class FileUsageHelper extends Backend
                 $hl = unserialize($objUsage['headline']);
                 $usage = array(
                   'title' => sprintf('Inhaltselement "%s"', $hl['value']),
-                  'url' => sprintf("/contao?do=article&table=tl_content&id=%d&act=edit&rt=%s", $objUsage['id'], RequestToken::get())
+                  'url' => sprintf("/contao?do=article&table=tl_content&id=%d&act=edit", $objUsage['id'])
                 );
                 break;
               case 'tl_layout':
                 # ausreichend
                 $usage = array(
                   'title' => sprintf('Layout "%s"', $objUsage['name']),
-                  'url' => sprintf("/contao?do=themes&table=tl_layout&id=%s&act=edit&rt=%s", $objUsage['id'], RequestToken::get())
+                  'url' => sprintf("/contao?do=themes&table=tl_layout&id=%s&act=edit", $objUsage['id'])
                 );
                 break;
               case 'tl_style':
                 # Name des übergeordneten Stylesheets.
                 $usage = array(
                   'title' => sprintf('CSS-Selector "%s"', $objUsage['selector']),
-                  'url' => sprintf("/contao?do=themes&table=tl_style&id=%d&act=edit&rt=%s", $objUsage['id'], RequestToken::get())
+                  'url' => sprintf("/contao?do=themes&table=tl_style&id=%d&act=edit", $objUsage['id'])
                 );
                 break;
               case 'tl_module':
                 # ausreichend; Module können mehrfach genutzt werden - schwierig...
                 $usage = array(
                   'title' => sprintf('Modul "%s"', $objUsage['name']),
-                  'url' => sprintf("/contao?do=themes&table=tl_module&id=%d&act=edit&rt=%s", $objUsage['id'], RequestToken::get())
+                  'url' => sprintf("/contao?do=themes&table=tl_module&id=%d&act=edit", $objUsage['id'])
                 );
                 break;
               case 'tl_news':
                 # News mit Newsarchiv
                 $usage = array(
                   'title' => sprintf('News "%s"', $objUsage['headline']),
-                  'url' => sprintf("/contao?do=news&table=tl_content&id=%d&rt=%s", $objUsage['id'], RequestToken::get())
+                  'url' => sprintf("/contao?do=news&table=tl_content&id=%d", $objUsage['id'])
                 );
                 break;
               default:
                 # keine Core-Tabelle. Link einfach mal raten.
                 $usage = array(
                   'title' => sprintf("ID %d in Tabelle %s", $objUsage['id'], $strTable),
-                  'url' => sprintf("/contao?do=%s&act=edit&id=%d&rt=%s", $strTable, $objUsage['id'], RequestToken::get())
+                  'url' => sprintf("/contao?do=%s&act=edit&id=%d", $strTable, $objUsage['id'])
                 );
                 break;
             }
