@@ -29,7 +29,7 @@ use Contao\Model\QueryBuilder;
 class FileUsageHelper extends Backend
 {
   private static $FILTER = ['tl_files', 'tl_search', 'tl_search_index', 'tl_undo', 'tl_version', 'tl_log', 'tl_user', 'tl_user_group', 'tl_trusted_device',
-    'tl_klausi_sqllog', 'XXX_iow_expeditionsverzeichnis', 'tl_klausi_emaillog'];
+    'tl_klausi_sqllog', 'XXX_iow_expeditionsverzeichnis', 'tl_klausi_emaillog', 'tl_crawl_queue'];
 
     /**
      * File.
