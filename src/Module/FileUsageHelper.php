@@ -397,6 +397,7 @@ class FileUsageHelper extends Backend
             #print $sql . ";\n";
             $arrUsage = $this->Database->prepare($sql)->query()->fetchEach('id');
           } elseif ($objFile->type == 'file' && ('varchar' === $arrField['type'] || 'text' === $arrField['type'] || 'mediumtext' === $arrField['type'] || 'longtext' === $arrField['type'])) {
+            /*  
             $sql = sprintf(
               "select id from `%s` where `%s` like '%%%s%%' or `%s` like '%%%s%%' or `%s` like '%%%s%%'",
               $strTable,
@@ -407,8 +408,15 @@ class FileUsageHelper extends Backend
               $arrField['name'],
               $objFile->path
             );
+            */
+            $sql = sprintf("select id from `%s` where `%s` like ? or `%s` like ? or `%s` like ?", $strTable, $arrField['name'], $arrField['name'], $arrField['name']);
             #print $sql . ";\n";
-            $arrUsage = $this->Database->prepare($sql)->query()->fetchEach('id');
+            $arrUsage = $this->Database->prepare($sql)
+               ->execute(
+                    '%'.strtoupper(bin2hex($objFile->uuid)).'%',
+                    '%'.StringUtil::binToUuid($objFile->uuid).'%',
+                    '%'.$objFile->path.'%'
+                )->fetchEach('id');
           } else {
             $arrUsage = array();
             #$result .= sprintf("%s.%s = %s<br>\n", $strTable, $arrField['name'], $arrField['type']);
